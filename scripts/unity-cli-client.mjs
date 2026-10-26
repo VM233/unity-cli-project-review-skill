@@ -184,5 +184,6 @@ export function createUnityCliClient(options) {
 
 export function redactCapabilities(value) {
   return JSON.parse(JSON.stringify(value, (key, entry) =>
-    /^(?:jobAccessToken|buildJobAccessToken|job_access_token)$/i.test(key) ? '[redacted]' : entry));
+    typeof entry === 'string' && /^(?:jobAccessToken|buildJobAccessToken|job_access_token)$/i.test(key)
+      ? '[redacted]' : entry));
 }

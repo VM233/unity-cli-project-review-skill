@@ -46,7 +46,8 @@ work, no new buffer/cache/transport; pass.
 
 Failure presentation reads the first native envelope error or the single
 Automation error product, without enumerating commands or retrying. Error JSON
-serialization uses the same capability redactor as public job evidence. Inputs
+serialization uses the same capability redactor as public job evidence, retaining
+object-valued schema definitions and replacing actual string-valued capabilities. Inputs
 remain bounded by the 8 MiB frame limit; one additional linear serialization
 pass fits the existing 512 MiB process budget. Native errors retain their full
 private receipt while the visible message includes its code and explanation.

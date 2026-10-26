@@ -46,6 +46,15 @@ test('public receipt redaction preserves the private original and job evidence',
   assert.equal(publicReceipt.polling.arguments.job_access_token, '[redacted]');
 });
 
+test('redaction preserves catalog schema definitions while removing actual credential strings', () => {
+  const value = { contract: { inputSchema: { properties: {
+    jobAccessToken: { type: 'string', minLength: 1, description: 'Owner capability.' }
+  } } }, result: { jobAccessToken: 'private' } };
+  const result = redactCapabilities(value);
+  assert.deepEqual(result.contract, value.contract);
+  assert.equal(result.result.jobAccessToken, '[redacted]');
+});
+
 test('correlates concurrent replies without losing the published polling receipt', async () => {
   const { child, client } = fixture();
   const first = client.automation('sample', { quote: 'a "quoted" value' });
