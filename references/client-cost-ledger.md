@@ -10,10 +10,11 @@ command discovery cache, background retry or mutation replay is introduced.
 
 One linear JSON/frame pass per admitted response; at most 8 outstanding promise
 records/timers. Encoding metadata parameters admits at most 64 scalar entries;
-arguments remain argv elements, never shell text. Maximum live buffer <=12 MiB
-including the incoming chunk; decoded JSON and at most 32 MiB queued request
-bytes have a conservative 512 MiB Node-process budget. The frame buffer grows
-geometrically, with at most 2*8 MiB copying before reaching its fixed ceiling.
+arguments remain argv elements, never shell text. The retained frame buffer is
+at most 8 MiB, with at most 16 MiB copied during geometric growth to its ceiling.
+Decoded JSON and at most 32 MiB queued request bytes have a conservative 512 MiB
+Node-process budget. Incoming native chunks are drained without copying their
+complete contents into a second retained queue.
 Pending records
 do not retain complete response frames after completion. A large native OS chunk
 containing several complete frames is drained before the residual-frame check.
