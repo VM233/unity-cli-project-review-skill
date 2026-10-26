@@ -37,6 +37,6 @@ it performs no filesystem IO or file cleanup. The caller owns the <=4 MiB native
 payload and keeps it on uncertain outcomes. Native facade validation/read limits
 remain authoritative. One additional fake-process case verifies path boundaries,
 mutually exclusive sources and the unchanged original job receipt. Native
-acceptance uses a 98 KiB read-only argument object that exceeds Windows argv
+acceptance uses a 99,327-byte read-only argument object that exceeds Windows argv
 capacity, then removes its exact file after the formal response. Constant client
 work, no new buffer/cache/transport; pass.
