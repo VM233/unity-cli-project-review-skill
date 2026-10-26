@@ -1,0 +1,161 @@
+import { EventEmitter } from 'node:events';
+import { PassThrough, Writable } from 'node:stream';
+import path from 'node:path';
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createUnityCliClient, redactCapabilities } from './unity-cli-client.mjs';
+
+class FakeProcess extends EventEmitter {
+  constructor() {
+    super();
+    this.stdout = new PassThrough();
+    this.stderr = new PassThrough();
+    this.exitCode = null;
+    this.requests = [];
+    this.stdin = new Writable({ write: (chunk, encoding, done) => {
+      this.requests.push(JSON.parse(chunk.toString('utf8')));
+      done();
+    } });
+  }
+  kill() { this.exitCode = -1; this.emit('exit', -1, 'SIGTERM'); }
+  reply(id, result, success = true) {
+    this.stdout.write(JSON.stringify({ id, envelope: { success, data: { result } } }) + '\n');
+  }
+}
+
+function fixture() {
+  const child = new FakeProcess();
+  const client = createUnityCliClient({ executablePath: 'unity', projectPath: path.resolve('fixture'),
+    spawnProcess: (executable, argv, options) => {
+      assert.equal(executable, 'unity');
+      assert.deepEqual(argv, ['--non-interactive', '--no-banner', 'shell', '--protocol', 'ndjson']);
+      assert.equal(options.windowsHide, true);
+      return child;
+    } });
+  return { child, client };
+}
+
+test('public receipt redaction preserves the private original and job evidence', () => {
+  const privateReceipt = { result: { jobId: 'job', jobAccessToken: 'private' },
+    polling: { command: 'vm_job_status', arguments: { job_access_token: 'private' } } };
+  const publicReceipt = redactCapabilities(privateReceipt);
+  assert.equal(privateReceipt.result.jobAccessToken, 'private');
+  assert.equal(publicReceipt.result.jobId, 'job');
+  assert.equal(publicReceipt.result.jobAccessToken, '[redacted]');
+  assert.equal(publicReceipt.polling.arguments.job_access_token, '[redacted]');
+});
+
+test('correlates concurrent replies without losing the published polling receipt', async () => {
+  const { child, client } = fixture();
+  const first = client.automation('sample', { quote: 'a "quoted" value' });
+  const second = client.command('vm_catalog_status');
+  const owner = { ok: true, result: { jobId: 'job' }, polling: {
+    command: 'vm_job_status', arguments: { job_id: 'job', job_type: 'workspace', job_access_token: 'private-capability' }
+  } };
+  child.reply(child.requests[1].id, { count: 2 });
+  child.reply(child.requests[0].id, owner);
+  assert.deepEqual(await first, owner);
+  assert.deepEqual(await second, { count: 2 });
+  const poll = client.poll(owner.polling);
+  assert.deepEqual(child.requests[2].argv.slice(-6),
+    ['--job_id', 'job', '--job_type', 'workspace', '--job_access_token', 'private-capability']);
+  child.reply(child.requests[2].id, { status: 'running' });
+  assert.deepEqual(await poll, { status: 'running' });
+  client.close();
+});
+
+test('decodes a multibyte character split between native stdout chunks', async () => {
+  const { child, client } = fixture();
+  const request = client.command('sample');
+  const bytes = Buffer.from(JSON.stringify({ id: child.requests[0].id,
+    envelope: { success: true, data: { result: { label: '控制台' } } } }) + '\n');
+  const split = bytes.indexOf(Buffer.from('控')) + 1;
+  child.stdout.write(bytes.subarray(0, split));
+  child.stdout.write(bytes.subarray(split, split + 1));
+  child.stdout.write(bytes.subarray(split + 1));
+  assert.deepEqual(await request, { label: '控制台' });
+  client.close();
+});
+
+test('close rejects in-flight callers and rejects later reuse immediately', async () => {
+  const { child, client } = fixture();
+  const first = client.command('pending');
+  client.close();
+  await assert.rejects(first, { code: 'client_closed' });
+  await assert.rejects(client.command('after-close'), { code: 'client_closed' });
+  assert.equal(child.requests.length, 1);
+});
+
+test('a fresh factory instance works even if its imported module stays cached', async () => {
+  const first = fixture();
+  first.client.close();
+  const second = fixture();
+  const pending = second.client.command('state');
+  second.child.reply(second.child.requests[0].id, { fresh: true });
+  assert.deepEqual(await pending, { fresh: true });
+  second.client.close();
+});
+
+for (const [event, code] of [['error', 'cli_process_error'], ['exit', 'cli_exited']]) {
+  test(`process ${event} rejects every pending caller`, async () => {
+    const { child, client } = fixture();
+    const first = client.command('one'), second = client.command('two');
+    if (event === 'error') child.emit('error', new Error('owned spawn failure'));
+    else { child.exitCode = 7; child.emit('exit', 7, null); }
+    await assert.rejects(first, { code });
+    await assert.rejects(second, { code });
+  });
+}
+
+test('a pipe failure does not leave an unresolved promise', async () => {
+  const { child, client } = fixture();
+  const pending = client.command('one');
+  child.stdin.emit('error', new Error('closed pipe'));
+  await assert.rejects(pending, { code: 'cli_pipe_error' });
+});
+
+test('truncated EOF and malformed frames expose protocol failure', async () => {
+  for (const partial of [true, false]) {
+    const { child, client } = fixture();
+    const pending = client.command('one');
+    child.stdout.write(partial ? '{"id":' : 'bad-json\n');
+    if (partial) child.stdout.end();
+    await assert.rejects(pending, { code: partial ? 'cli_eof' : 'cli_protocol_invalid' });
+  }
+});
+
+test('response identity mismatch fails instead of discarding the response', async () => {
+  const { child, client } = fixture();
+  const pending = client.command('one');
+  child.reply('unrecognized', {});
+  await assert.rejects(pending, { code: 'cli_protocol_invalid' });
+});
+
+test('deadline retires observation without replaying the request', async () => {
+  const { child, client } = fixture();
+  await assert.rejects(client.command('mutation', {}, { timeoutMs: 20 }), { code: 'cli_deadline' });
+  assert.equal(child.requests.length, 1);
+});
+
+test('transport and domain failures remain distinct', async () => {
+  const first = fixture(), second = fixture();
+  const transport = first.client.command('sample');
+  first.child.reply(first.child.requests[0].id, {}, false);
+  await assert.rejects(transport, { code: 'cli_command_failed' });
+  const domain = second.client.automation('sample');
+  second.child.reply(second.child.requests[0].id, { ok: false, errorCode: 'domain-example' });
+  await assert.rejects(domain, error => error.code === 'automation_failed' && error.details.owner.errorCode === 'domain-example');
+  first.client.close(); second.client.close();
+});
+
+test('request concurrency and response bytes have explicit bounds', async () => {
+  const first = fixture();
+  const pending = Array.from({ length: 8 }, () => first.client.command('pending'));
+  await assert.rejects(first.client.command('ninth'), { code: 'client_request_limit' });
+  first.client.close();
+  await Promise.all(pending.map(item => assert.rejects(item, { code: 'client_closed' })));
+  const second = fixture();
+  const overflow = second.client.command('overflow');
+  second.child.stdout.write(Buffer.alloc(8 * 1024 * 1024 + 1, 65));
+  await assert.rejects(overflow, { code: 'cli_protocol_limit' });
+});

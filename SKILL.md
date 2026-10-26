@@ -17,6 +17,7 @@ description: "Use official Unity CLI/Pipeline for project-bound Editor commands,
 ## 选择本次流程
 
 - **调用、发现或连接问题**：读 [CLI 调用与 Job](references/cli-and-jobs.md)。按需查少量候选，再读取一个精确 contract；重复调用复用官方 NDJSON shell。
+- 需要 JavaScript 调用端时复用 [官方 CLI 客户端](scripts/unity-cli-client.mjs)，显式创建和关闭实例。模块导入不启动进程，不能用改变 import URL 参数来重启已关闭客户端；保留原生 polling 元数据并区分传输、领域与作业终态。
 - **新增/调整脚本、资源或目录**：读 [目录分类与审查](references/folder-organization.md)。默认盘点 Assets 根层，并递归审查 Scripts、Editor、Resources、GameResources、Game Resources 中存在的范围。外部插件、package 和供应商资源保持原布局。
 - **代码、package 或工具变更后的验收**：读 [验证与采用](references/validation-and-adoption.md)。复用正式审查 owner，按风险执行编译、聚焦回归和消费端采用；不能把传输成功当作业务成功。
 

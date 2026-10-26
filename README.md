@@ -13,3 +13,6 @@ git clone https://github.com/VM233/unity-cli-project-review-skill.git ~/.codex/s
 入口为 [SKILL.md](SKILL.md)。工具要求：官方 Unity CLI、项目已安装的 `com.unity.pipeline` 和提供所需 contract 的 VMUnityAutomation。目录内置默认策略与 shallow root 需要 VMUnityAutomation 0.6.285 或后续提供同契约的版本；执行参数始终查询当前 catalog。
 
 默认检查 Assets 根层与存在的 Scripts、Editor、Resources、GameResources、Game Resources；外部插件保持原布局。skill 不携带项目文件、凭据、Editor 传输实现或文件搬运脚本。
+
+需要 JavaScript 调用端时，使用 [显式生命周期的官方 CLI 客户端](scripts/unity-cli-client.mjs)
+（Node.js 18+，无外部依赖）。用法与回归见 [CLI/Job 说明](references/cli-and-jobs.md)。
