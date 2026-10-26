@@ -88,6 +88,16 @@ try {
 `timeoutMs`（至多 60 秒）；长操作应提交 Job 并用原生轮询，不用扩大期限掩盖错误
 入口。宿主重置后，从私有 receipt 恢复。
 
+发现入口使用 `client.command('vm_catalog_list', { query, limit, offset })` 与
+`client.command('vm_catalog_get', { name })`；`client.automation` 只调用 catalog
+返回的 Automation command。客户端不会猜测或改道重发错误入口。原生错误码和
+说明进入异常消息，完整私有 envelope 保留在 `error.details`；公开错误用
+`JSON.stringify(error)`，会自动脱敏 Job capability。
+
+`status` 若同时报告无法枚举进程，零实例并不能证明 Editor 已关闭。保留该诊断，
+通过同一官方 CLI 对精确项目的只读调用核实连接；可达时用 `editor/state` 读取
+实际状态，不因枚举失败创建或重启 Editor。官方 CLI 本身的枚举缺陷须单独记录。
+
 响应以字节分帧后解码 UTF-8，保留跨 chunk 的中文字符；异常 ID、截断和超量响应
 不能被静默丢弃。边界与成本见 [client-cost-ledger.md](client-cost-ledger.md)，
 回归执行 `node --test scripts/unity-cli-client.test.mjs`。

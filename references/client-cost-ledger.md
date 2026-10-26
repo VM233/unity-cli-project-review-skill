@@ -29,7 +29,10 @@ Regression cases use one injected process per client, <=8 requests, <=3 output
 chunks per small frame; the response-overflow case uses one 8 MiB + 1 byte frame.
 Deadlines use an explicit 20 ms test clock budget, with no Editor or Unity calls.
 Native acceptance uses the real official shell and existing read-only commands,
-plus the actual publication Job receipts. No test bypass mode exists in the
+plus native/domain unknown-command rejections and actual publication Job receipts.
+The native missing-command counterexample emits an expected official Pipeline
+Console error; retain and attribute that record rather than claiming a clean
+Console. No test bypass mode exists in the
 production API. Budget: pass.
 
 The file-argument entry adds only an absolute path to the same official command;
@@ -40,3 +43,11 @@ mutually exclusive sources and the unchanged original job receipt. Native
 acceptance uses a 99,327-byte read-only argument object that exceeds Windows argv
 capacity, then removes its exact file after the formal response. Constant client
 work, no new buffer/cache/transport; pass.
+
+Failure presentation reads the first native envelope error or the single
+Automation error product, without enumerating commands or retrying. Error JSON
+serialization uses the same capability redactor as public job evidence. Inputs
+remain bounded by the 8 MiB frame limit; one additional linear serialization
+pass fits the existing 512 MiB process budget. Native errors retain their full
+private receipt while the visible message includes its code and explanation.
+No additional child, timer, IO or discovery cache; pass.

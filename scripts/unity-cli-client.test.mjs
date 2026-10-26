@@ -19,7 +19,8 @@ class FakeProcess extends EventEmitter {
   }
   kill() { this.exitCode = -1; this.emit('exit', -1, 'SIGTERM'); }
   reply(id, result, success = true) {
-    this.stdout.write(JSON.stringify({ id, envelope: { success, data: { result } } }) + '\n');
+    this.stdout.write(JSON.stringify({ id, envelope: { success, data: { result },
+      errors: success ? [] : [{ code: 'native-example', message: 'Native rejection evidence.' }] } }) + '\n');
   }
 }
 
@@ -157,11 +158,55 @@ test('transport and domain failures remain distinct', async () => {
   const first = fixture(), second = fixture();
   const transport = first.client.command('sample');
   first.child.reply(first.child.requests[0].id, {}, false);
-  await assert.rejects(transport, { code: 'cli_command_failed' });
+  await assert.rejects(transport, error => error.code === 'cli_command_failed' &&
+    error.message === 'native-example: Native rejection evidence.');
   const domain = second.client.automation('sample');
-  second.child.reply(second.child.requests[0].id, { ok: false, errorCode: 'domain-example' });
-  await assert.rejects(domain, error => error.code === 'automation_failed' && error.details.owner.errorCode === 'domain-example');
+  second.child.reply(second.child.requests[0].id, { ok: false,
+    error: { code: 'domain-example', message: 'Domain rejection evidence.', retryable: false } });
+  await assert.rejects(domain, error => error.code === 'automation_failed' &&
+    error.message === 'sample: domain-example: Domain rejection evidence.' &&
+    error.details.owner.error.code === 'domain-example');
   first.client.close(); second.client.close();
+});
+
+test('the original discovery misuse exposes its native command_not_found explanation', async () => {
+  const { child, client } = fixture();
+  const pending = client.automation('vm_catalog_list', { query: 'player' });
+  const owner = { ok: false, command: 'vm_catalog_list',
+    error: { code: 'command_not_found', message: "Automation command 'vm_catalog_list' was not found.", retryable: false } };
+  child.reply(child.requests[0].id, owner);
+  await assert.rejects(pending, error => {
+    assert.match(error.message, /command_not_found/);
+    assert.match(error.message, /Automation command 'vm_catalog_list' was not found/);
+    assert.deepEqual(error.details.owner, owner);
+    return true;
+  });
+  assert.equal(child.requests.length, 1);
+  client.close();
+});
+
+test('serializing a native failure redacts capabilities without changing its private receipt', async () => {
+  const { child, client } = fixture();
+  const pending = client.automation('sample');
+  child.reply(child.requests[0].id, { ok: false,
+    error: { code: 'owned-failure', message: 'An owned operation failed.' },
+    result: { jobId: 'owned-job', jobAccessToken: 'private-capability' } });
+  await assert.rejects(pending, error => {
+    const publicError = JSON.parse(JSON.stringify(error));
+    assert.equal(error.details.owner.result.jobAccessToken, 'private-capability');
+    assert.equal(publicError.details.owner.result.jobAccessToken, '[redacted]');
+    assert.equal(publicError.details.owner.result.jobId, 'owned-job');
+    return true;
+  });
+  client.close();
+});
+
+test('malformed domain failure is a protocol defect rather than a generic domain rejection', async () => {
+  const { child, client } = fixture();
+  const pending = client.automation('sample');
+  child.reply(child.requests[0].id, { ok: false });
+  await assert.rejects(pending, { code: 'cli_protocol_invalid' });
+  client.close();
 });
 
 test('request concurrency and response bytes have explicit bounds', async () => {

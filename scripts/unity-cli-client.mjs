@@ -12,6 +12,11 @@ export class UnityCliError extends Error {
     this.code = code;
     this.details = details;
   }
+
+  toJSON() {
+    return redactCapabilities({ name: this.name, code: this.code,
+      message: this.message, details: this.details });
+  }
 }
 
 export class UnityCliClient {
@@ -64,8 +69,13 @@ export class UnityCliClient {
       this.#pending.set(id, { resolve, reject, timer });
       this.#child.stdin.write(line);
     });
-    if (response.envelope?.success !== true)
-      throw new UnityCliError('cli_command_failed', 'Official CLI rejected the command.', { response });
+    if (response.envelope?.success !== true) {
+      const nativeError = response.envelope?.errors?.[0];
+      if (typeof nativeError?.code !== 'string' || typeof nativeError.message !== 'string')
+        throw new UnityCliError('cli_protocol_invalid', 'Official CLI failure has no structured error.', { response });
+      throw new UnityCliError('cli_command_failed',
+        `${nativeError.code}: ${nativeError.message}`, { response });
+    }
     return response;
   }
 
@@ -96,8 +106,12 @@ export class UnityCliClient {
       command, ...source,
       expected_project_path: this.projectPath
     }, options);
-    if (owner.ok !== true)
-      throw new UnityCliError('automation_failed', 'Automation returned a domain failure.', { owner });
+    if (owner?.ok !== true) {
+      if (owner?.ok !== false || typeof owner.error?.code !== 'string' || typeof owner.error.message !== 'string')
+        throw new UnityCliError('cli_protocol_invalid', 'Automation failure has no structured error.', { owner });
+      throw new UnityCliError('automation_failed',
+        `${command}: ${owner.error.code}: ${owner.error.message}`, { owner });
+    }
     return owner;
   }
 
