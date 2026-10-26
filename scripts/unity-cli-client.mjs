@@ -82,8 +82,18 @@ export class UnityCliClient {
   }
 
   async automation(command, args = {}, options) {
+    return this.#automation(command, {
+      arguments_json: JSON.stringify({ ...args, expectedProjectPath: this.projectPath })
+    }, options);
+  }
+
+  async automationFromFile(command, argumentsFile, options) {
+    return this.#automation(command, { arguments_file: argumentsFile }, options);
+  }
+
+  async #automation(command, source, options) {
     const owner = await this.command('vm_automation_call', {
-      command, arguments_json: JSON.stringify({ ...args, expectedProjectPath: this.projectPath }),
+      command, ...source,
       expected_project_path: this.projectPath
     }, options);
     if (owner.ok !== true)

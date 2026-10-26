@@ -42,6 +42,11 @@ unity --non-interactive --no-banner shell --protocol ndjson
 
 不要为每个小调用重启 CLI，也不通过自建 server/adapter 获得另一套传输。
 
+Windows 的原生子进程命令行仍有长度上限，即使外层使用 NDJSON shell。
+较大参数对象写入当前项目私有 Temp 下的 UTF-8 JSON 文件，通过正式
+`arguments_file` 传路径，不能继续把大 JSON 塞进 argv；它与 `arguments_json`
+互斥。先核对 facade 当前 schema，Native owner 校验项目归属和文件大小。
+
 ## 持久任务
 
 - 保留提交响应的完整 `polling.command` / `polling.arguments`，不要只返回内层 `result` 丢弃它。该原生调用映射是首选轮询入口；当前 `vm_job_status` 在主线程被构建/导入阻塞时仍能读取快照，不能换成需要主线程的 facade 查询然后把阻塞当成 Job 失败。
@@ -65,6 +70,8 @@ const client = createUnityCliClient({ executablePath: officialUnityCliPath, proj
 try {
   // exactContractName / commandArguments 已通过当前 catalog 核对。
   const receipt = await client.automation(exactContractName, commandArguments);
+  // 大参数改用 client.automationFromFile(exactContractName, absoluteArgumentsFile)。
+  // 调用方持有文件：收到原生响应后清理；超时/不确定结果时保留以供核对。
   await savePrivateReceipt(receipt);
   const snapshot = await client.poll(receipt.polling);
   // 按该 Job contract 判定 queued/running/terminal；公开记录先脱敏。

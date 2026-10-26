@@ -77,6 +77,22 @@ test('decodes a multibyte character split between native stdout chunks', async (
   client.close();
 });
 
+test('large payloads use the native arguments_file contract with caller-owned lifetime', async () => {
+  const { child, client } = fixture();
+  const file = path.join(client.projectPath, 'Temp', '参数 file.json');
+  const request = client.automationFromFile('sample', file);
+  const argv = child.requests[0].argv;
+  assert.equal(argv[argv.indexOf('--arguments_file') + 1], file);
+  assert.equal(argv.includes('--arguments_json'), false);
+  assert.equal(argv[argv.indexOf('--expected_project_path') + 1], client.projectPath);
+  const owner = { ok: true, result: { jobId: 'native-job' }, polling: {
+    command: 'vm_job_status', arguments: { job_id: 'native-job', job_access_token: 'private' }
+  } };
+  child.reply(child.requests[0].id, owner);
+  assert.deepEqual(await request, owner);
+  client.close();
+});
+
 test('close rejects in-flight callers and rejects later reuse immediately', async () => {
   const { child, client } = fixture();
   const first = client.command('pending');

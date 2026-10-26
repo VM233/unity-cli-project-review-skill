@@ -31,3 +31,12 @@ Deadlines use an explicit 20 ms test clock budget, with no Editor or Unity calls
 Native acceptance uses the real official shell and existing read-only commands,
 plus the actual publication Job receipts. No test bypass mode exists in the
 production API. Budget: pass.
+
+The file-argument entry adds only an absolute path to the same official command;
+it performs no filesystem IO or file cleanup. The caller owns the <=4 MiB native
+payload and keeps it on uncertain outcomes. Native facade validation/read limits
+remain authoritative. One additional fake-process case verifies path boundaries,
+mutually exclusive sources and the unchanged original job receipt. Native
+acceptance uses a 98 KiB read-only argument object that exceeds Windows argv
+capacity, then removes its exact file after the formal response. Constant client
+work, no new buffer/cache/transport; pass.
