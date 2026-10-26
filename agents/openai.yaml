@@ -1,0 +1,4 @@
+interface:
+  display_name: "Unity CLI 与项目审查"
+  short_description: "Use Unity CLI and audit owned scripts and asset folders"
+  default_prompt: "Use $unity-cli-project-review to operate the Unity project through its official CLI and review project-owned folder organization."
