@@ -58,6 +58,10 @@ Windows 的原生子进程命令行仍有长度上限，即使外层使用 NDJSO
 
 Editor 与 Runtime catalog 分离。RuntimeOnly 由运行时 Pipeline/service 提供，不能借运行时命令绕过 Editor 写入边界。Game View 查询、选择已有尺寸、临时尺寸会话与永久偏好维护也必须使用各自 contract；普通验证复用已有窗口，不建立永久验证预设。
 
+Editor 状态读取正式 owner 的 play、pause、transition、compiling、updating、scene 和绝对 project path，不从窗口标题、最近日志或 UI 推断。
+
+Game View 已有尺寸选择不得新增或保存预设；临时任意尺寸会话必须在调用方 finally 中结束，reload/退出由 owner 自动释放。结束后比较完整预设表与用户偏好文件，不能仅恢复选中尺寸就认定无残留。只有用户明确要求永久维护时才进入永久写入契约，并先读取最新保存的全局表及文件版本，保留其他 Editor 的更新。缺少查询、临时会话或清理能力时直接补齐对应 owner，不通过 YAML 改写绕过生命周期。
+
 ## 可复用 JavaScript 调用端
 
 [unity-cli-client.mjs](../scripts/unity-cli-client.mjs) 使用 Node.js 18+ 标准库，
@@ -102,6 +106,6 @@ try {
 不能被静默丢弃。边界与成本见 [client-cost-ledger.md](client-cost-ledger.md)，
 回归执行 `node --test scripts/unity-cli-client.test.mjs`。
 
-## 发现能力缺陷
+## 故障与能力缺口
 
-保留精确请求、绑定路径、revision、错误 envelope 和原 Job 检查点。区分调用误用、连接问题与 owner 缺陷。只读源码/日志可用于归因，不能代替正式接口验收。修复应同步 typed schema、描述、producer、错误契约、测试和消费链；不在 facade 或项目层重复补偿。旧传输迁移须逐 route 决定合并、正式注册或删除，并证明旧 consumer/config/process 已退役。
+立即执行 [CLI 修复与能力补齐](cli-repair-and-extension.md)，自行完成归因、权威修复或正式能力新增、已授权发布接入和原请求回归，不再询问是否处理。只读源码和日志用于归因，正式 CLI 调用与真实读回才证明恢复。

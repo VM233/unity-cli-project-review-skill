@@ -18,6 +18,8 @@
 
 共享规则已明确授权用户维护 package 的自动发布闭环时，完成上游提交/推送和当前已授权消费项目的精确 pin/lock/adoption，不重复询问；若不存在该授权，则遵守用户当前发布边界。不能自动升级其他项目，也不能夹带消费项目业务脏改、创建 PR 或新增发布渠道。
 
+该闭环同样覆盖当前任务所需 CLI 能力的新增、注册、schema/错误与生命周期补齐，不能把“功能缺失”转成等待用户选择的理由。发布前审阅仓库既有版本、CHANGELOG 和专门文档；仅维护 Git revision 的仓库不凭空增加 tag/registry。
+
 ## Adoption 不是改一行 manifest
 
 取得并读回不可变完整远端 SHA 后，让当前正式 package update/resolve Job 采用该 revision，保存并立即轮询原任务。证据须覆盖 manifest、lock、registered/resolved package path/hash、Asset refresh、编译、assembly reload 与实际 revision。

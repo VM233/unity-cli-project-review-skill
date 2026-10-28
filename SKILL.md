@@ -1,11 +1,18 @@
 ---
 name: unity-cli-project-review
-description: "Use official Unity CLI/Pipeline for project-bound Editor commands, catalog discovery, durable jobs, package adoption and automated project review. Apply when Unity automation or script/resource folder organization is involved; excludes gameplay design and reorganizing third-party plugins. 官方 Unity CLI 与脚本、资源目录组织审查。"
+description: "Operate Unity through official CLI/Pipeline, repair CLI faults, add missing CLI capabilities, manage durable jobs and package adoption, and review owned script/resource folders. Apply to Unity automation and CLI failures or capability gaps; excludes gameplay design and reorganizing third-party plugins. 官方 Unity CLI 故障修复、能力补齐与项目审查。"
 ---
 
 # Unity CLI 与项目审查
 
 通过官方 Unity CLI 操作正确的 Unity 项目，取得可读回的完成证据，并审查项目自有脚本与资源的分类。此 skill 提供操作流程；用户请求和仓库规则决定权限，当前工具 schema 决定参数及结果契约。
+
+## CLI 故障立即修复，缺失能力直接补齐
+
+- 已授权任务遇到 CLI 调用、连接、绑定、catalog/schema、错误映射、持久 Job 或调用端问题时，立即归因并修复；所需 CLI 功能缺失时，直接在权威 owner 补齐正式能力，再继续原任务。不要询问用户“要不要修 CLI”“要不要补命令”或“是否改用手工操作”，不要把问题登记、建议或临时绕行当作完成。
+- 先核对当前 help、catalog、请求、revision 和原生错误，区分调用误用、暂时未就绪、真实缺陷与能力缺口。修正误用的调用方，保留暂时中断的原 Job；确认缺陷或缺口后修对应 producer/contract，不把正常业务拒绝当成 CLI Bug，也不盲目重发变更请求。
+- 读取 [CLI 修复与能力补齐](references/cli-repair-and-extension.md)，闭合实现、注册、typed schema、错误与生命周期、受影响 consumer、聚焦回归和文档；按当前请求及适用规则已授权的范围完成发布、接入和正式请求重跑，不为这些技术处理再次提问。
+- 只有无法自行取得的必要源码、凭据、上游写权限、不可替代环境或未授权的破坏性/产品选择才是阻点。先完成仍可执行的归因和修复，准确说明具体缺口；不能用工具报错或“功能不存在”本身作为交回用户的理由。
 
 ## 先确定入口与所有权
 
@@ -16,7 +23,7 @@ description: "Use official Unity CLI/Pipeline for project-bound Editor commands,
 
 ## 选择本次流程
 
-- **调用、发现或连接问题**：读 [CLI 调用与 Job](references/cli-and-jobs.md)。按需查少量候选，再读取一个精确 contract；重复调用复用官方 NDJSON shell。
+- **调用、发现或连接**：读 [CLI 调用与 Job](references/cli-and-jobs.md)。按需查少量候选，再读取一个精确 contract；重复调用复用官方 NDJSON shell。故障或能力缺失同时执行上面的直接修复要求。
 - 需要 JavaScript 调用端时复用 [官方 CLI 客户端](scripts/unity-cli-client.mjs)，显式创建和关闭实例。模块导入不启动进程，不能用改变 import URL 参数来重启已关闭客户端；保留原生 polling 元数据并区分传输、领域与作业终态。
 - Windows 大参数使用该客户端的 `automationFromFile` 与正式 `arguments_file`；调用方持有项目 Temp 中的 UTF-8 JSON，收到响应后清理，不确定结果时保留核对，不能把长 JSON 继续塞进子进程 argv。
 - **新增/调整脚本、资源或目录**：读 [目录分类与审查](references/folder-organization.md)。默认盘点 Assets 根层，并递归审查 Scripts、Editor、Resources、GameResources、Game Resources 中存在的范围。外部插件、package 和供应商资源保持原布局。
@@ -26,6 +33,6 @@ description: "Use official Unity CLI/Pipeline for project-bound Editor commands,
 
 ## 缺陷与收尾
 
-发现绑定、schema、错误映射、Job、默认范围或输出不能表达真实结果时，定位权威 producer 并修复工具；不要加备用传输或静默默认值。保持既有用户改动，不编辑 PackageCache，不顺带升级未授权的消费项目。
+保持既有用户改动，不编辑 PackageCache，不顺带升级未授权的消费项目。修复或补齐后必须恢复原任务，用正式 CLI 证明原失败请求或原缺失能力已经可用；改代码、单元测试或登记问题均不能单独证明闭环。
 
 交付说明实际改变、已采用 revision、完成的检查及剩余问题。区分静态、编译、正式 CLI 调用与运行画面证据。目录报告需列出真正扫描的范围、配置来源、超限计数及分类依据；未完成、被截断或尚未检查的部分不能报为通过。
