@@ -52,3 +52,19 @@ remain bounded by the 8 MiB frame limit; one additional linear serialization
 pass fits the existing 512 MiB process budget. Native errors retain their full
 private receipt while the visible message includes its code and explanation.
 No additional child, timer, IO or discovery cache; pass.
+
+Explicit reconnect retires no healthy connection and replays no request. It is
+admitted only on an already retired client, keeps the same client identity and
+monotonic request IDs, and starts exactly one replacement official shell. Old
+child callbacks are scoped to their child identity and cannot retire the new
+connection. The existing eight-request and buffer bounds apply independently to
+each connection; no additional retained response queue is created. Three
+two-child regressions exercise retained polling closures, stale child events and
+rejection while connected. Capability redaction also covers cleanup tokens while
+preserving object-valued schema definitions. Budget: pass.
+
+The contract helper performs exactly one native vm_catalog_get call and checks
+its existing result product, with no secondary catalog scan or retry. Three
+single-child cases cover a schema containing capability definitions, the actual
+found=false native result, and malformed found=true output. The original 8MiB
+response / 512MiB process bounds apply unchanged. Pass.

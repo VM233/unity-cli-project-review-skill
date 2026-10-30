@@ -27,6 +27,8 @@ export class UnityCliClient {
   #frameLength = 0;
   #stderr = Buffer.alloc(0);
   #failure = null;
+  #executablePath;
+  #spawnProcess;
 
   constructor({ executablePath, projectPath, spawnProcess = spawn }) {
     if (!path.isAbsolute(projectPath))
@@ -34,21 +36,45 @@ export class UnityCliClient {
     if (typeof executablePath !== 'string' || executablePath.length === 0)
       throw new UnityCliError('invalid_cli_path', 'Select the installed official Unity CLI executable.');
     this.projectPath = path.normalize(projectPath);
-    this.#child = spawnProcess(executablePath,
+    this.#executablePath = executablePath;
+    this.#spawnProcess = spawnProcess;
+    this.#startProcess();
+  }
+
+  #startProcess() {
+    const child = this.#spawnProcess(this.#executablePath,
       ['--non-interactive', '--no-banner', 'shell', '--protocol', 'ndjson'],
       { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
-    this.#child.stdout.on('data', chunk => this.#receive(Buffer.from(chunk)));
-    this.#child.stderr.on('data', chunk => {
+    this.#child = child;
+    this.#failure = null;
+    this.#frame = Buffer.alloc(4096);
+    this.#frameLength = 0;
+    this.#stderr = Buffer.alloc(0);
+    child.stdout.on('data', chunk => {
+      if (this.#child === child) this.#receive(Buffer.from(chunk));
+    });
+    child.stderr.on('data', chunk => {
+      if (this.#child !== child) return;
       const bytes = Buffer.from(chunk);
       this.#stderr = Buffer.concat([this.#stderr, bytes.subarray(-4096)]).subarray(-4096);
     });
-    this.#child.on('error', error => this.#retire('cli_process_error', error.message));
-    this.#child.stdin.on('error', error => this.#retire('cli_pipe_error', error.message));
-    this.#child.stdout.on('error', error => this.#retire('cli_pipe_error', error.message));
-    this.#child.stdout.on('end', () => this.#retire('cli_eof',
+    const retire = (code, message, details) => {
+      if (this.#child === child) this.#retire(code, message, details);
+    };
+    child.on('error', error => retire('cli_process_error', error.message));
+    child.stdin.on('error', error => retire('cli_pipe_error', error.message));
+    child.stdout.on('error', error => retire('cli_pipe_error', error.message));
+    child.stdout.on('end', () => retire('cli_eof',
       this.#frameLength ? 'Official CLI ended inside an NDJSON frame.' : 'Official CLI closed its response stream.'));
-    this.#child.on('exit', (exitCode, signal) => this.#retire('cli_exited',
+    child.on('exit', (exitCode, signal) => retire('cli_exited',
       'Official CLI exited; unresolved command outcomes remain unknown.', { exitCode, signal }));
+  }
+
+  reconnect() {
+    if (!this.#failure)
+      throw new UnityCliError('client_connected', 'The official CLI connection is still active; pending requests remain owned by it.');
+    this.#startProcess();
+    return this;
   }
 
   async request(argv, { timeoutMs = 15000 } = {}) {
@@ -97,6 +123,15 @@ export class UnityCliClient {
     }, options);
   }
 
+  async contract(name, options) {
+    const owner = await this.command('vm_catalog_get', { name }, options);
+    if (owner?.found === true && owner.contract && typeof owner.contract === 'object')
+      return owner.contract;
+    if (owner?.found === false && typeof owner.errorCode === 'string' && typeof owner.errorMessage === 'string')
+      throw new UnityCliError('cli_contract_unavailable', `${owner.errorCode}: ${owner.errorMessage}`, { owner });
+    throw new UnityCliError('cli_protocol_invalid', 'Native catalog did not publish a contract or a structured missing-contract result.', { owner });
+  }
+
   async automationFromFile(command, argumentsFile, options) {
     return this.#automation(command, { arguments_file: argumentsFile }, options);
   }
@@ -122,7 +157,7 @@ export class UnityCliClient {
   }
 
   close() {
-    this.#retire('client_closed', 'The caller closed this CLI client; create a new instance to resume saved receipts.');
+    this.#retire('client_closed', 'The caller closed this CLI client; explicitly reconnect or create a new instance to resume saved receipts.');
   }
 
   #receive(chunk) {
@@ -184,6 +219,6 @@ export function createUnityCliClient(options) {
 
 export function redactCapabilities(value) {
   return JSON.parse(JSON.stringify(value, (key, entry) =>
-    typeof entry === 'string' && /^(?:jobAccessToken|buildJobAccessToken|job_access_token)$/i.test(key)
+    typeof entry === 'string' && /^(?:jobAccessToken|buildJobAccessToken|job_access_token|cleanupToken|cleanup_token)$/i.test(key)
       ? '[redacted]' : entry));
 }

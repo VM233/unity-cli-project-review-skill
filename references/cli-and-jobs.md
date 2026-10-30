@@ -86,14 +86,18 @@ try {
 ```
 
 实例拥有自己的进程、请求和关闭状态。JS 宿主可能按文件路径缓存模块，不能假设
-不同 query-string 代表新模块；关闭后必须显式创建新实例。关闭、进程退出、
+不同 query-string 代表新模块。连接退役后可显式 `client.reconnect()`，保留同一
+client 对象，让已持有它的轮询回调继续使用新连接；也可显式创建新实例并同步
+所有调用者。reconnect 拒绝替换仍活跃的连接，不丢弃在途请求。关闭、进程退出、
 管道错误、协议异常和请求期限会明确拒绝待决调用，不自动重发请求，也不取消已
-提交到 Unity 的持久 Job。默认响应期限为 15 秒，可按正式调用需求显式传
+提交到 Unity 的持久 Job。重连本身不重发任何请求；用原始 receipt 调用 `poll`
+恢复任务，不能再次提交原变更。默认响应期限为 15 秒，可按正式调用需求显式传
 `timeoutMs`（至多 60 秒）；长操作应提交 Job 并用原生轮询，不用扩大期限掩盖错误
 入口。宿主重置后，从私有 receipt 恢复。
 
 发现入口使用 `client.command('vm_catalog_list', { query, limit, offset })` 与
-`client.command('vm_catalog_get', { name })`；`client.automation` 只调用 catalog
+`client.contract(name)`；后者核对 found 与原生错误，缺失 contract 时直接携带
+原始原因抛错，不向文件写入者返回 undefined。`client.automation` 只调用 catalog
 返回的 Automation command。客户端不会猜测或改道重发错误入口。原生错误码和
 说明进入异常消息，完整私有 envelope 保留在 `error.details`；公开错误用
 `JSON.stringify(error)`，会自动脱敏 Job capability。
