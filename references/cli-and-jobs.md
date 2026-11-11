@@ -42,6 +42,8 @@ unity --non-interactive --no-banner shell --protocol ndjson
 
 不要为每个小调用重启 CLI，也不通过自建 server/adapter 获得另一套传输。
 
+先用只读查询核对当前安装版本的 shell 实际产品。2026-11-12 的本机原始反例是 Pipeline 动态 command 在 shell 中返回 `success:true,data:null`，而相同项目、命令和参数的一次性官方 `unity --json command` 返回完整 catalog；请求中增加 `--json` 也未修复 shell 产品。客户端必须报告 `cli_protocol_invalid` 并保留原始 envelope，禁止把空结果当完成或重放不确定的写入。此版本可显式采用一次性官方 command 执行后续尚未提交的请求和原 Job 查询，仍只走官方 CLI/Pipeline；不得增加第二传输或声称 shell 已修复。待上游 shell 产品改变后重新核对，只读对照不能替代真实写入回执。
+
 Windows 的原生子进程命令行仍有长度上限，即使外层使用 NDJSON shell。
 较大参数对象写入当前项目私有 Temp 下的 UTF-8 JSON 文件，通过正式
 `arguments_file` 传路径，不能继续把大 JSON 塞进 argv；它与 `arguments_json`

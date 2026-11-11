@@ -114,6 +114,8 @@ export class UnityCliClient {
     const argv = ['command', '--project-path', this.projectPath, name, '--'];
     for (const [key, value] of entries) argv.push('--' + key, String(value));
     const response = await this.request(argv, options);
+    if (!response.envelope.data || !Object.hasOwn(response.envelope.data, 'result'))
+      throw new UnityCliError('cli_protocol_invalid', 'Official command response omitted its machine-readable result.', { response });
     return response.envelope.data.result;
   }
 

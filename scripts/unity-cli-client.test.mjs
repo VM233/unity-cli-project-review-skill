@@ -74,6 +74,16 @@ test('correlates concurrent replies without losing the published polling receipt
   client.close();
 });
 
+test('rejects a native success envelope without a command result', async () => {
+  const { child, client } = fixture();
+  const result = client.command('vm_catalog_status');
+  child.stdout.write(JSON.stringify({ id: child.requests[0].id,
+    envelope: { success: true, data: null, errors: [], warnings: [] } }) + '\n');
+  await assert.rejects(result, error => error.code === 'cli_protocol_invalid' &&
+    error.message.includes('machine-readable result'));
+  client.close();
+});
+
 test('decodes a multibyte character split between native stdout chunks', async () => {
   const { child, client } = fixture();
   const request = client.command('sample');
