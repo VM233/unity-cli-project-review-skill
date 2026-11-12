@@ -11,7 +11,7 @@
 
 ## 修复或补齐权威能力
 
-通用 Unity 行为、typed contract、schema、错误和资源生命周期归 `VMUnityAutomation`；实例发现、绑定、调用和通用 Job 基础设施归 `VMUnityPipeline`；VMFramework 领域能力归 `VMFramework-Pipeline`；项目工具只组合项目事实。官方 CLI 调用端问题在该调用端修复，不在消费项目重复补偿。
+通用 Unity 行为、执行、typed contract 和资源生命周期归 `VMUnityAutomation`；通用 UI 审查及其专属 schema、门禁与测试归独立 `VMUnityUIReview` 包，并通过同一 catalog/provider 执行。实例发现、绑定、调用和通用 Job 基础设施归 `VMUnityPipeline`；VMFramework 领域能力归 `VMFramework-Pipeline`；项目工具只组合项目事实。官方 CLI 调用端问题在该调用端修复，不在消费项目重复补偿。
 
 1. 沿原请求确定 producer、caller、状态和生命周期；审查同一机制的相关入口。优先扩展已有职责，只有真实不同的语义或生命周期才新增正式命令。
 2. 同步实现、注册、typed input/output schema、description、稳定错误码、effects、preconditions、transaction 与完成证据。Dictionary 请求也须闭合 schema；不能仅写文档让调用者猜参数。

@@ -12,7 +12,7 @@
 
 ## 唯一 owner 与发布
 
-先从 remote、manifest、解析路径和实际源码确认用户维护的权威 package。`VMUnityAutomation` 拥有通用 typed 命令、schema、错误和执行生命周期；framework package 拥有领域能力；消费项目只组合项目事实。外部插件默认保留，不能因为目录拥挤就接管。
+先从 remote、manifest、解析路径和实际源码确认用户维护的权威 package。`VMUnityAutomation` 拥有通用命令与执行生命周期；`VMUnityUIReview` 拥有 UI 审查实现及专属 contract，通过原 catalog/provider 组合；framework package 拥有领域能力；消费项目只组合项目事实。外部插件默认保留，不能因为目录拥挤就接管。
 
 授权修改的 package 在独立权威仓库完成。同步源码、聚焦测试、版本/CHANGELOG、专门文档及实际公开 contract；遵守仓库已有发布方式。禁止直接改 `Library/PackageCache`，也不使用 embedded、file:、symlink 或本地副本作为最终依赖。
 
